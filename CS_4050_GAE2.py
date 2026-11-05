@@ -73,11 +73,9 @@ def validation():
         start = time.time()
         brute_force_inversion(array)
         times_brute.append(time.time()-start)
-    # print(times_brute)
-    # print(times_merge)
-    print(times_brute[-1]/times_brute[-2])
-    print(times_merge[-1]/times_merge[-2])
-    print(times_brute[-1]/times_merge[-1])
+    print(f"Brute Force Increase: {times_brute[-1]/times_brute[-2]}")
+    print(f"Merge Sort Increase: {times_merge[-1]/times_merge[-2]}")
+    print(f"Brute/Merge Ratio at n=20,000: {times_brute[-1]/times_merge[-1]}")
 
 
 if __name__ == "__main__":
