@@ -93,10 +93,14 @@ def validation():
 # 2A - Greedy Largest-Denomination First
 def greedy_largest_denomination_first(denominations, target_amount):
     coins_used = []
-    for coin in reversed(denominations):
+    for coin in sorted(denominations, reverse=True):
         while target_amount >= coin:
             coins_used.append(coin)
             target_amount -= coin
+
+    if (target_amount > 0):  # if we have a remaining amount that cannot be made with the given denominations, return None
+        return None
+
     return coins_used
 
 # 2B - Naive Exact Recursive Solution (slide 81 of Dynamic Programming I v2)
@@ -110,9 +114,10 @@ def naive_exact_recursive(denominations, target_amount):
         remainder = target_amount - coin
         solution = naive_exact_recursive(denominations, remainder)      #make the recursive call to find the solution for the remainder
         if solution is not None:                        # this means that a solution was found for the remainder, so we can add the current coin to the solution and check if it's better than the best solution found so far
-            solution = [coin] + solution
+            solution = solution +[coin]
             if best_solution is None or len(solution) < len(best_solution):     # if the best solution is None (i.e., no solution has been found yet) or if the current solution is better (i.e., uses fewer coins), update the best solution
                 best_solution = solution
+                
     return best_solution
 
 
@@ -149,6 +154,18 @@ def coin_algorithm_validation():
         print(f"Greedy correct: {greedy_solution == test_case.expected_solution}")
         print(f"Naive correct: {naive_solution == test_case.expected_solution}")
 
+    # 100 random small test cases
+    print(f"\n{BOLD}{UNDERLINE}Random Small Test Cases{RESET}\n")
+    for x in range(100):
+        # random denominations between 1 and 20, with 1 to 4 denominations, and we alaways include 1 as a denomination to ensure that a solution is always possible
+        denominations = [1] + sorted(random.sample(range(2, 20), random.randint(1, 4)))
+        target_amount = random.randint(10, 30)
+        greedy_solution = greedy_largest_denomination_first(denominations, target_amount)
+        naive_solution = naive_exact_recursive(denominations, target_amount)
+        print(f"{BOLD}{UNDERLINE}Random Test Case {x}: {target_amount} with denominations {denominations}{RESET}")
+        print(f"Greedy solution for target {target_amount} with denominations {denominations}: {greedy_solution}")
+        print(f"Naive solution for target {target_amount} with denominations {denominations}: {naive_solution}")
+        print(f"Greedy correct: {greedy_solution == naive_solution}")
 
 
 
