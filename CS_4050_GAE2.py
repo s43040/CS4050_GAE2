@@ -110,6 +110,42 @@ def naive_exact_recursive(denominations, target_amount):
     return best_solution
 
 
+def coin_algorithm_validation():
+
+    for denominations in [[1, 5, 10, 25, 50], [1, 3, 4], [1, 2, 5, 10]]:
+    
+        target_amounts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        expected_solutions = [
+            [],
+            [1],
+            [1,1],
+            [1,1,1],
+            [1,1,1,1],
+            [5],
+            [5,1],
+            [5,1,1],
+            [5,1,1,1],
+            [5,1,1,1,1],
+            [10],
+            [10,1],
+            [10,1,1],
+            [10,1,1,1],
+            [10,5],
+            [10,5]
+        ]
+        for target_amount in target_amounts:
+            greedy_solution = greedy_largest_denomination_first(denominations,target_amount)
+            naive_solution = naive_exact_recursive(denominations,target_amount)
+            expected_solution = expected_solutions[target_amount]
+            print(f"Target Amount: {target_amount}")
+            print(f"Greedy Solution: {greedy_solution}")
+            print(f"Naive Solution: {naive_solution}")
+            print(f"Expected Solution: {expected_solution}")
+            print(f"Greedy Correct: {greedy_solution == expected_solution}")
+            print(f"Naive Correct: {naive_solution == expected_solution}")
+            print("")
+
+
 
 
 
