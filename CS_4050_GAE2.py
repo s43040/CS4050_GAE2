@@ -78,6 +78,42 @@ def validation():
     print(f"Brute/Merge Ratio at n=20,000: {times_brute[-1]/times_merge[-1]}")
 
 
+# coin change solvers (Part 2)
+# coin denominations are given as an array of ascending integers, with the smallest denomination being 1
+# the target amount is given as an integer greater than or equal to zero
+
+
+
+# 2A - Greedy Largest-Denomination First
+def greedy_largest_denomination_first(denominations, target_amount):
+    coins_used = []
+    for coin in reversed(denominations):
+        while target_amount >= coin:
+            coins_used.append(coin)
+            target_amount -= coin
+    return coins_used
+
+# 2B - Naive Exact Recursive Solution (slide 81 of Dynamic Programming I v2)
+def naive_exact_recursive(denominations, target_amount):
+    if target_amount == 0:      # base case: if the target amount is zero, return an empty list (no coins needed)
+        return []
+    if target_amount < 0:       # base case: if the target amount is negative, return None (no solution possible)
+        return None
+    best_solution = None        # initialize the best solution as None
+    for coin in denominations:
+        remainder = target_amount - coin
+        solution = naive_exact_recursive(denominations, remainder)      #make the recursive call to find the solution for the remainder
+        if solution is not None:                        # this means that a solution was found for the remainder, so we can add the current coin to the solution and check if it's better than the best solution found so far
+            solution = [coin] + solution
+            if best_solution is None or len(solution) < len(best_solution):     # if the best solution is None (i.e., no solution has been found yet) or if the current solution is better (i.e., uses fewer coins), update the best solution
+                best_solution = solution
+    return best_solution
+
+
+
+
+
+
 if __name__ == "__main__":
     random.seed(1)
     array = [random.randint(1,100000) for i in range(100)]
