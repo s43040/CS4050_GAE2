@@ -1,6 +1,10 @@
 import random
 import time
 
+BOLD = "\033[1m"
+RESET = "\033[0m"
+UNDERLINE = "\033[4m"
+
 def inv_count_merge(array):
     if len(array) <= 1:
         return array, 0
@@ -82,6 +86,8 @@ def validation():
 # coin denominations are given as an array of ascending integers, with the smallest denomination being 1
 # the target amount is given as an integer greater than or equal to zero
 
+# we make the assumption that the denominations are strictly increasing and start with 1
+
 
 
 # 2A - Greedy Largest-Denomination First
@@ -110,41 +116,38 @@ def naive_exact_recursive(denominations, target_amount):
     return best_solution
 
 
+class CoinChangeTestCase:
+    def __init__(self, denominations, target_amount, expected_solution):
+        self.denominations = denominations
+        self.target_amount = target_amount
+        self.expected_solution = expected_solution
+
 def coin_algorithm_validation():
+    # set up all the test cases
+    test_cases = [
+        CoinChangeTestCase([1, 3, 4], 6, [3, 3]),
+        CoinChangeTestCase([1, 2, 5], 11, [5, 5, 1]),
+        CoinChangeTestCase([1, 3, 4], 7, [4, 3]),
+        CoinChangeTestCase([1], 0, []),
+        CoinChangeTestCase([1, 5, 10, 25], 0, []),
+        CoinChangeTestCase([1, 5, 10, 25], 1, [1]),
+        CoinChangeTestCase([1, 5, 10, 25], 41, [25, 10, 5, 1]),
+        CoinChangeTestCase([2, 5, 10, 1], 27, [10, 10, 5, 2]),
+        CoinChangeTestCase([30, 40, 50], 10, None),  # No solution possible
+        CoinChangeTestCase([30, 40, 50], 100, [50, 50])  # Exact solution possible
+    ]
 
-    for denominations in [[1, 5, 10, 25, 50], [1, 3, 4], [1, 2, 5, 10]]:
+    print(f"{BOLD}{UNDERLINE}Coin Change Algorithm Validation{RESET}\n")
     
-        target_amounts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        expected_solutions = [
-            [],
-            [1],
-            [1,1],
-            [1,1,1],
-            [1,1,1,1],
-            [5],
-            [5,1],
-            [5,1,1],
-            [5,1,1,1],
-            [5,1,1,1,1],
-            [10],
-            [10,1],
-            [10,1,1],
-            [10,1,1,1],
-            [10,5],
-            [10,5]
-        ]
-        for target_amount in target_amounts:
-            greedy_solution = greedy_largest_denomination_first(denominations,target_amount)
-            naive_solution = naive_exact_recursive(denominations,target_amount)
-            expected_solution = expected_solutions[target_amount]
-            print(f"Target Amount: {target_amount}")
-            print(f"Greedy Solution: {greedy_solution}")
-            print(f"Naive Solution: {naive_solution}")
-            print(f"Expected Solution: {expected_solution}")
-            print(f"Greedy Correct: {greedy_solution == expected_solution}")
-            print(f"Naive Correct: {naive_solution == expected_solution}")
-            print("")
-
+    for test_case in test_cases:
+        greedy_solution = greedy_largest_denomination_first(test_case.denominations, test_case.target_amount)
+        naive_solution = naive_exact_recursive(test_case.denominations, test_case.target_amount)
+        print(f"{BOLD}{UNDERLINE}Test Case: {test_case.target_amount} with denominations {test_case.denominations}{RESET}")
+        print(f"Greedy solution for target {test_case.target_amount} with denominations {test_case.denominations}: {greedy_solution}")
+        print(f"Naive solution for target {test_case.target_amount} with denominations {test_case.denominations}: {naive_solution}")
+        print(f"Expected solution: {test_case.expected_solution}")
+        print(f"Greedy correct: {greedy_solution == test_case.expected_solution}")
+        print(f"Naive correct: {naive_solution == test_case.expected_solution}")
 
 
 
@@ -166,3 +169,5 @@ if __name__ == "__main__":
     # print(new_array)
     print(inversions)
     validation()
+
+    coin_algorithm_validation()
