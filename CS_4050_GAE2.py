@@ -100,9 +100,14 @@ def validation():
 def greedy_largest_denomination_first(denominations, target_amount):
     coins_used = []
     for coin in sorted(denominations, reverse=True):
+    for coin in sorted(denominations, reverse=True):
         while target_amount >= coin:
             coins_used.append(coin)
             target_amount -= coin
+
+    if (target_amount > 0):  # if we have a remaining amount that cannot be made with the given denominations, return None
+        return None
+
 
     if (target_amount > 0):  # if we have a remaining amount that cannot be made with the given denominations, return None
         return None
