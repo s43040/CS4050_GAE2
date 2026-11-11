@@ -1,5 +1,6 @@
 import random
 import time
+import math
 
 class Globals:
     recursive_calls = 0
@@ -144,9 +145,32 @@ def top_down_dp_with_memoization(denominations, target_amount, mem=None, count_s
     mem[target_amount] = best_solution
     return best_solution
 
-# 2D - Bottom-Up DP
-def bottom_up_DP():
-    return 0
+# 2A.D - Bottom-Up DP
+# compute optimal values for amounts 0,1,...,A in increasing order and store enough information to reconstruct an optimal solution
+def bottom_up_dp(denominations, target_amount, count_stuff = False):
+    # first compute the optimal values
+    INFINITY = float("inf")
+    min_coins = [INFINITY] * (target_amount + 1)    # min_coins[a] = OPT(a), initialize to infinity to make optimization easy
+    last_coin = [0] * (target_amount + 1)           # last_coin[a] is a coin used in OPT(a), which we can use for reconstruction
+    min_coins[0] = 0                                # base case: zero coins sum up to amount zero
+    for amount in range(1, target_amount + 1):      # compute OPT(a) for 0,1,...,A in increasing order
+        for coin in denominations:
+            if coin <= amount and min_coins[amount - coin] + 1 < min_coins[amount]:
+                if count_stuff == True:
+                    Globals.target_states_solved += 1
+                min_coins[amount] = min_coins[amount - coin] + 1
+                last_coin[amount] = coin
+
+    if min_coins[target_amount] == INFINITY:    # no combination reached the target so it is impossible
+        return None
+    
+    # now reconstruct an optimal solution
+    coins_used = []
+    amount = target_amount
+    while amount > 0:
+        coins_used.append(last_coin[amount])
+        amount -= last_coin[amount]
+    return coins_used
 
 def coin_algorithm_validation():
 
@@ -183,7 +207,7 @@ def coin_algorithm_validation():
             print(f"Naive Correct: {naive_solution == expected_solution}")
             print("")
 
-def part_2c():
+def part_2c1():
     denominations = sorted(set([1]+[random.randint(1,10) for i in range(3)]+[random.randint(10,50) for i in range(3)]))
     print(denominations)
     target_num = 35
@@ -205,7 +229,24 @@ def part_2c():
     print(f"Total Target States Solved: {Globals.target_states_solved}")
     print(f"Total Cache Hits: {Globals.memoization_cache_hits}")
     print(f"Solution: {sol}")
+    Globals.recursive_calls = 0
+    Globals.target_states_solved = 0
+    Globals.memoization_cache_hits = 0
 
+def part_2c2():
+    print("\nPart 2c2")
+    denominations = sorted(set([1]+[random.randint(1,10) for i in range(3)]+[random.randint(10,50) for i in range(3)]))
+    print(f"Denominations: {denominations}")
+    starting_a = 10
+    for i in range(8):
+        start = time.time()
+        bottom_up_dp(denominations, starting_a**i, True)
+        print(f"A: {starting_a**i}")
+        print(f"Bit_length_A: {math.floor(math.log2(starting_a**i))+1}")
+        print(f"Number of DP states processed: {Globals.target_states_solved}")
+        print(f"Runtime: {time.time()-start}")
+        print("")
+        Globals.target_states_solved = 0
 
 if __name__ == "__main__":
     random.seed(1)
@@ -224,5 +265,6 @@ if __name__ == "__main__":
     print(inversions)
     validation()
     coin_algorithm_validation()
-    part_2c()
+    part_2c1()
+    part_2c2()
 
