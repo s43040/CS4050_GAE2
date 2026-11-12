@@ -6,6 +6,7 @@ class Globals:
     recursive_calls = 0
     target_states_solved = 0
     memoization_cache_hits = 0
+    naive_states_seen = set()
 
 BOLD = "\033[1m"
 RESET = "\033[0m"
@@ -68,7 +69,8 @@ def validation():
     random_arrays = [[random.randint(1,100) for i in range(100)]for x in range(200)]
     inversions_got_merge = [inv_count_merge(array)[1] for array in random_arrays]
     inversions_got_brute = [brute_force_inversion(array) for array in random_arrays]
-    print(inversions_got_merge==inversions_got_brute)
+    # print(inversions_got_merge==inversions_got_brute)
+    assert inversions_got_merge==inversions_got_brute, "Inversions and Brute Force do not match for the 200 random arrays in part 1B"
 
     for i in range(2,200):
         array = [random.randint(1,100) for n in range(i)]
@@ -135,37 +137,51 @@ def naive_exact_recursive(denominations, target_amount, count_stuff = False):
             solution = solution + [coin]
             if best_solution is None or len(solution) < len(best_solution):     # if the best solution is None (i.e., no solution has been found yet) or if the current solution is better (i.e., uses fewer coins), update the best solution
                 best_solution = solution
-                if count_stuff == True:
-                    Globals.target_states_solved += 1
+    if count_stuff == True:
+        Globals.naive_states_seen.add(target_amount)   # this amount has now been fully solved
     return best_solution
 
 # 2A.C - Top-Down DP with Memoization
-def top_down_dp_with_memoization(denominations, target_amount, mem=None, count_stuff = False):
+# mem[a] stores (min coin count for a, last coin used) instead of a whole coin list, so each state does O(k) work
+# and no lists are copied: O(kA) time, O(A) space. Recursive calls (is_top_level=False) return just the min count;
+# the outermost call rebuilds the coin list once at the end in O(A).
+def top_down_dp_with_memoization(denominations, target_amount, mem=None, count_stuff = False, is_top_level = True):
     if mem is None:
         mem = {}
-    if target_amount == 0:      # base case: if the target amount is zero, return an empty list (no coins needed)
-        return []
+    if target_amount == 0:      # base case: zero coins needed (empty list for the caller, count 0 for recursion)
+        return [] if is_top_level else 0
     if target_amount < 0:       # base case: if the target amount is negative, return None (no solution possible)
         return None
     if target_amount in mem:    # if the answer is already cached, reuse the earlier answer
         if count_stuff == True:
             Globals.memoization_cache_hits += 1
-        return mem[target_amount]
-
-    best_solution = None        # initialize the best solution as None
-    for coin in denominations:
+        best = mem[target_amount]
+    else:
+        best = None             # best (count, last_coin) found so far
+        for coin in denominations:
             remainder = target_amount - coin
-            solution = top_down_dp_with_memoization(denominations, remainder, mem, count_stuff)  # make the recursive call to find the solution for the remainder
+            sub_count = top_down_dp_with_memoization(denominations, remainder, mem, count_stuff, False)  # min coins for the remainder
             if count_stuff == True:
                 Globals.recursive_calls += 1
-            if solution is not None:    # this means that a solution was found for the remainder, so we can add the current coin to the solution and check if it's better than the best solution found so far
-                solution = solution + [coin]
-                if best_solution is None or len(solution) < len(best_solution):     # if the best solution is None (i.e., no solution has been found yet) or if the current solution is better (i.e., uses fewer coins), update the best solution
-                    best_solution = solution
-    mem[target_amount] = best_solution
-    if count_stuff == True:
-        Globals.target_states_solved += 1
-    return best_solution
+            if sub_count is not None and (best is None or sub_count + 1 < best[0]):   # using this coin last beats the best so far
+                best = (sub_count + 1, coin)
+        mem[target_amount] = best
+        if count_stuff == True:
+            Globals.target_states_solved += 1
+
+    if not is_top_level:        # inside the recursion, only the count is needed
+        return None if best is None else best[0]
+    if best is None:            # no combination reaches the target
+        return None
+
+    # reconstruct one optimal solution by following the cached last coins back down to 0
+    best_solution = []
+    amount = target_amount
+    while amount > 0:
+        coin = mem[amount][1]
+        best_solution.append(coin)
+        amount -= coin
+    return best_solution[::-1]
 
 # 2A.D - Bottom-Up DP
 # compute optimal values for amounts 0,1,...,A in increasing order and store enough information to reconstruct an optimal solution
@@ -213,7 +229,8 @@ def coin_algorithm_validation():
         CoinChangeTestCase([1, 5, 10, 25], 41, [25, 10, 5, 1]),
         CoinChangeTestCase([2, 5, 10, 1], 27, [10, 10, 5, 2]),
         CoinChangeTestCase([30, 40, 50], 10, None),  # No solution possible
-        CoinChangeTestCase([30, 40, 50], 100, [50, 50])  # Exact solution possible
+        CoinChangeTestCase([30, 40, 50], 100, [50, 50]),  # Exact solution possible
+        CoinChangeTestCase([1,3,4,5], 8, [4,4])  # Exact solution possible
     ]
 
     print(f"{BOLD}{UNDERLINE}Coin Change Algorithm Validation{RESET}\n")
@@ -221,12 +238,18 @@ def coin_algorithm_validation():
     for test_case in test_cases:
         greedy_solution = greedy_largest_denomination_first(test_case.denominations, test_case.target_amount)
         naive_solution = naive_exact_recursive(test_case.denominations, test_case.target_amount)
+        top_down_solution = top_down_dp_with_memoization(test_case.denominations, test_case.target_amount)
+        bottom_up_solution = bottom_up_dp(test_case.denominations, test_case.target_amount)
         print(f"{BOLD}{UNDERLINE}Test Case: {test_case.target_amount} with denominations {test_case.denominations}{RESET}")
         print(f"Greedy solution for target {test_case.target_amount} with denominations {test_case.denominations}: {greedy_solution}")
         print(f"Naive solution for target {test_case.target_amount} with denominations {test_case.denominations}: {naive_solution}")
+        print(f"Top Down solution for target {test_case.target_amount} with denominations {test_case.denominations}: {top_down_solution}")
+        print(f"Bottom Up solution for target {test_case.target_amount} with denominations {test_case.denominations}: {bottom_up_solution}")
         print(f"Expected solution: {test_case.expected_solution}")
         print(f"Greedy correct: {greedy_solution == test_case.expected_solution or len(greedy_solution) == len(test_case.expected_solution)}")
         print(f"Naive correct: {naive_solution == test_case.expected_solution or len(naive_solution) == len(test_case.expected_solution)}")
+        print(f"Top Down correct: {top_down_solution == test_case.expected_solution or len(top_down_solution) == len(test_case.expected_solution)}")
+        print(f"Bottom Up correct: {bottom_up_solution == test_case.expected_solution or len(bottom_up_solution) == len(test_case.expected_solution)}")
 
     # 100 random small test cases
     print(f"\n{BOLD}{UNDERLINE}Random Small Test Cases{RESET}\n")
@@ -238,12 +261,15 @@ def coin_algorithm_validation():
         top_down_solution = top_down_dp_with_memoization(denominations, target_amount)
         bottom_up_solution = bottom_up_dp(denominations, target_amount)
         greedy_solution = greedy_largest_denomination_first(denominations, target_amount)
-        if sum(naive_solution) != target_amount:
-            print(f"Niave solution got: {sum(naive_solution)}, when target amount is: {target_amount}")
-        if sum(top_down_solution) != target_amount:
-            print(f"Top Down solution got: {sum(top_down_solution)}, when target amount is: {target_amount}")
-        if sum(bottom_up_solution) != target_amount:
-            print(f"Bottom Up solution got: {sum(bottom_up_solution)}, when target amount is: {target_amount}")
+        assert sum(naive_solution) == target_amount, f"Niave solution got: {sum(naive_solution)}, when target amount is: {target_amount}"
+        assert sum(top_down_solution) == target_amount, f"Top Down solution got: {sum(top_down_solution)}, when target amount is: {target_amount}"
+        assert sum(bottom_up_solution) == target_amount, f"Bottom Up solution got: {sum(bottom_up_solution)}, when target amount is: {target_amount}"
+        # if sum(naive_solution) != target_amount:
+        #     print(f"Niave solution got: {sum(naive_solution)}, when target amount is: {target_amount}")
+        # if sum(top_down_solution) != target_amount:
+        #     print(f"Top Down solution got: {sum(top_down_solution)}, when target amount is: {target_amount}")
+        # if sum(bottom_up_solution) != target_amount:
+        #     print(f"Bottom Up solution got: {sum(bottom_up_solution)}, when target amount is: {target_amount}")
         print(f"{BOLD}{UNDERLINE}Random Test Case {x}: {target_amount} with denominations {denominations}{RESET}")
         print(f"Naive solution for target {target_amount} with denominations {denominations}: {naive_solution}")
         print(f"Top Down solution for target {target_amount} with denominations {denominations}: {top_down_solution}")
@@ -266,11 +292,11 @@ def part_2c1():
         print("Naive Recurssive")
         print(f"Target Number: {i}")
         print(f"Total Recursive Calls: {Globals.recursive_calls}")
-        print(f"Total Target States Solved: {Globals.target_states_solved}")
+        print(f"Total Target States Solved: {len(Globals.naive_states_seen)}")
         print(f"Solution: {sol}")
 
         Globals.recursive_calls = 0
-        Globals.target_states_solved = 0
+        Globals.naive_states_seen.clear()
         sol = top_down_dp_with_memoization(denominations, i, {}, True)
         print("\n")
         print("Top Down with Memoization")
@@ -288,13 +314,13 @@ def part_2c2():
     denominations = sorted(set([1]+[random.randint(1,10) for i in range(3)]+[random.randint(10,50) for i in range(3)]))
     print(f"Denominations: {denominations}")
     starting_a = 2
-    for i in range(20):
-        start = time.time()
+    for i in range(8,20):
+        start = time.perf_counter()
         bottom_up_dp(denominations, starting_a**i, True)
         print(f"A: {starting_a**i}")
         print(f"Bit_length_A: {(starting_a**i).bit_length()}")
         print(f"Number of DP states processed: {Globals.target_states_solved}")
-        print(f"Runtime: {time.time()-start}")
+        print(f"Runtime: {time.perf_counter()-start}")
         print("")
         Globals.target_states_solved = 0
 
@@ -302,17 +328,9 @@ def part_2c2():
 if __name__ == "__main__":
     random.seed(1)
     array = [random.randint(1,100000) for i in range(100)]
-    start = time.time()
     new_array, inversions = inv_count_merge(array)
-    print(time.time()-start)
-    # print(array)
-    # print(new_array)
     print(inversions)
-    start = time.time()
     inversions = brute_force_inversion(array)
-    print(time.time()-start)
-    # print(array)
-    # print(new_array)
     print(inversions)
     validation()
     coin_algorithm_validation()
