@@ -1,6 +1,5 @@
 import random
 import time
-import math
 
 class Globals:
     recursive_calls = 0
@@ -62,14 +61,13 @@ def validation():
                            4]
     inversions_got_merge = [inv_count_merge(array)[1] for array in hand_crafted_arrays]
     inversions_got_brute = [brute_force_inversion(array) for array in hand_crafted_arrays]
-    print(inversions_got_brute)
-    print(inversions_got_merge)
+    print(f"Inversions from brute force: {inversions_got_brute}")
+    print(f"Inversions from merge: {inversions_got_merge}")
     assert inversions_got_merge==expected_inversions, "Inversions from merge is different than from expected"
     assert inversions_got_brute==expected_inversions, "Inversions from brute_force is different than from expected"
     random_arrays = [[random.randint(1,100) for i in range(100)]for x in range(200)]
     inversions_got_merge = [inv_count_merge(array)[1] for array in random_arrays]
     inversions_got_brute = [brute_force_inversion(array) for array in random_arrays]
-    # print(inversions_got_merge==inversions_got_brute)
     assert inversions_got_merge==inversions_got_brute, "Inversions and Brute Force do not match for the 200 random arrays in part 1B"
 
     for i in range(2,200):
@@ -247,9 +245,9 @@ def coin_algorithm_validation():
         print(f"Bottom Up solution for target {test_case.target_amount} with denominations {test_case.denominations}: {bottom_up_solution}")
         print(f"Expected solution: {test_case.expected_solution}")
         print(f"Greedy correct: {greedy_solution == test_case.expected_solution or len(greedy_solution) == len(test_case.expected_solution)}")
-        print(f"Naive correct: {naive_solution == test_case.expected_solution or len(naive_solution) == len(test_case.expected_solution)}")
-        print(f"Top Down correct: {top_down_solution == test_case.expected_solution or len(top_down_solution) == len(test_case.expected_solution)}")
-        print(f"Bottom Up correct: {bottom_up_solution == test_case.expected_solution or len(bottom_up_solution) == len(test_case.expected_solution)}")
+        assert naive_solution == test_case.expected_solution or len(naive_solution) == len(test_case.expected_solution), "Naive Incorrect"
+        assert top_down_solution == test_case.expected_solution or len(top_down_solution) == len(test_case.expected_solution), "Top Down Incorrect"
+        assert bottom_up_solution == test_case.expected_solution or len(bottom_up_solution) == len(test_case.expected_solution), "Bottom Up Incorrect"
 
     # 100 random small test cases
     print(f"\n{BOLD}{UNDERLINE}Random Small Test Cases{RESET}\n")
@@ -264,12 +262,6 @@ def coin_algorithm_validation():
         assert sum(naive_solution) == target_amount, f"Niave solution got: {sum(naive_solution)}, when target amount is: {target_amount}"
         assert sum(top_down_solution) == target_amount, f"Top Down solution got: {sum(top_down_solution)}, when target amount is: {target_amount}"
         assert sum(bottom_up_solution) == target_amount, f"Bottom Up solution got: {sum(bottom_up_solution)}, when target amount is: {target_amount}"
-        # if sum(naive_solution) != target_amount:
-        #     print(f"Niave solution got: {sum(naive_solution)}, when target amount is: {target_amount}")
-        # if sum(top_down_solution) != target_amount:
-        #     print(f"Top Down solution got: {sum(top_down_solution)}, when target amount is: {target_amount}")
-        # if sum(bottom_up_solution) != target_amount:
-        #     print(f"Bottom Up solution got: {sum(bottom_up_solution)}, when target amount is: {target_amount}")
         print(f"{BOLD}{UNDERLINE}Random Test Case {x}: {target_amount} with denominations {denominations}{RESET}")
         print(f"Naive solution for target {target_amount} with denominations {denominations}: {naive_solution}")
         print(f"Top Down solution for target {target_amount} with denominations {denominations}: {top_down_solution}")
@@ -289,8 +281,8 @@ def part_2c1():
         sol = naive_exact_recursive(denominations, i, True)
         print("\n")
         print(f"{BOLD}{UNDERLINE}Test calls with target amount: {i} with denominations {denominations}{RESET}")
-        print("Naive Recurssive")
         print(f"Target Number: {i}")
+        print("Naive Recurssive")
         print(f"Total Recursive Calls: {Globals.recursive_calls}")
         print(f"Total Target States Solved: {len(Globals.naive_states_seen)}")
         print(f"Solution: {sol}")
@@ -298,9 +290,7 @@ def part_2c1():
         Globals.recursive_calls = 0
         Globals.naive_states_seen.clear()
         sol = top_down_dp_with_memoization(denominations, i, {}, True)
-        print("\n")
         print("Top Down with Memoization")
-        print(f"Target Number: {i}")
         print(f"Total Recursive Calls: {Globals.recursive_calls}")
         print(f"Total Target States Solved: {Globals.target_states_solved}")
         print(f"Total Cache Hits: {Globals.memoization_cache_hits}")
