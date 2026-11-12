@@ -1,5 +1,23 @@
 import random
 import time
+import csv
+import os
+
+RESULTS_DIR = "results"     # all CSV output goes in this folder
+
+def write_csv(filename, header, rows):
+    # writes one CSV file into RESULTS_DIR; called after timing is finished so file I/O never affects measurements
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    path = os.path.join(RESULTS_DIR, filename)
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        writer.writerows(rows)
+    print(f"Wrote {path}")
+
+def coins_to_str(coins):
+    # stores a coin list in a single CSV cell, e.g. [4, 1, 1] -> "4 1 1"
+    return "" if coins is None else " ".join(str(c) for c in coins)
 
 class Globals:
     recursive_calls = 0
@@ -80,6 +98,9 @@ def validation():
         time_for_brute = time.perf_counter()-start
         if time_for_merge < time_for_brute:
             print(f"At size: {i}, merge beats brute force with time: {time_for_merge} vs brute time: {time_for_brute}")
+            write_csv("inversion_crossover.csv",
+                      ["n", "merge_seconds", "brute_seconds"],
+                      [[i, time_for_merge, time_for_brute]])
             break
 
     different_n = [1,10,100,1_000,2_000,5_000,10_000,20_000]
@@ -96,6 +117,9 @@ def validation():
     print(f"Brute Force Increase: {times_brute[-1]/times_brute[-2]}")
     print(f"Merge Sort Increase: {times_merge[-1]/times_merge[-2]}")
     print(f"Brute/Merge Ratio at n=20,000: {times_brute[-1]/times_merge[-1]}")
+    write_csv("inversion_runtime.csv",
+              ["n", "merge_seconds", "brute_seconds", "brute_over_merge"],
+              [[n, tm, tb, tb / tm] for n, tm, tb in zip(different_n, times_merge, times_brute)])
 
 
 # coin change solvers (Part 2)
@@ -216,6 +240,7 @@ class CoinChangeTestCase:
         self.expected_solution = expected_solution
 
 def coin_algorithm_validation():
+    random.seed(2)
     # set up all the test cases
     test_cases = [
         CoinChangeTestCase([1, 3, 4], 6, [3, 3]),
@@ -267,18 +292,21 @@ def coin_algorithm_validation():
         print(f"Top Down solution for target {target_amount} with denominations {denominations}: {top_down_solution}")
         print(f"Bottom Up solution for target {target_amount} with denominations {denominations}: {bottom_up_solution}")
         print(f"They all agree?: {len(naive_solution) == len(top_down_solution) and len(top_down_solution) == len(bottom_up_solution)}")
-        if not (len(naive_solution) == len(top_down_solution) and len(top_down_solution) == len(bottom_up_solution)):
-            print(f"The Naive, top_down, and bottom_up solutions do not agree for denominations: {denominations}, and target_amount{target_amount}")
-            raise SystemExit
+        assert len(naive_solution) == len(top_down_solution) == len(bottom_up_solution), \
+            f"Naive, top-down and bottom-up disagree for denominations {denominations}, target {target_amount}"
         if greedy_solution != None and len(greedy_solution) > len(top_down_solution):
             print(f"Greedy works but is not optimal. Target: {target_amount}, denominations: {denominations}, solution: {greedy_solution}")
 
 def part_2c1():
+    random.seed(3)
     denominations = sorted(set([1]+[random.randint(1,10) for i in range(3)]+[random.randint(10,50) for i in range(3)]))
     print(f"Denominations for part 2c1: {denominations}")
     # target_num = 34
+    rows = []   # one CSV row per target amount
     for i in range(1,25):
         sol = naive_exact_recursive(denominations, i, True)
+        naive_calls = Globals.recursive_calls
+        naive_states = len(Globals.naive_states_seen)
         print("\n")
         print(f"{BOLD}{UNDERLINE}Test calls with target amount: {i} with denominations {denominations}{RESET}")
         print(f"Target Number: {i}")
@@ -295,25 +323,71 @@ def part_2c1():
         print(f"Total Target States Solved: {Globals.target_states_solved}")
         print(f"Total Cache Hits: {Globals.memoization_cache_hits}")
         print(f"Solution: {sol}")
+        rows.append([coins_to_str(denominations), i, naive_calls, naive_states,
+                     Globals.recursive_calls, Globals.target_states_solved, Globals.memoization_cache_hits,
+                     len(sol), coins_to_str(sol)])
         Globals.recursive_calls = 0
         Globals.target_states_solved = 0
         Globals.memoization_cache_hits = 0
+    write_csv("experiment1_repeated_subproblems.csv",
+              ["denominations", "A", "naive_recursive_calls", "naive_distinct_states",
+               "topdown_recursive_calls", "topdown_distinct_states", "topdown_cache_hits",
+               "optimal_coin_count", "solution"],
+              rows)
 
 def part_2c2():
+    random.seed(4)
     print("\nPart 2c2")
     denominations = sorted(set([1]+[random.randint(1,10) for i in range(3)]+[random.randint(10,50) for i in range(3)]))
     print(f"Denominations: {denominations}")
     starting_a = 2
+    rows = []   # one CSV row per A
     for i in range(8,20):
         start = time.perf_counter()
         bottom_up_dp(denominations, starting_a**i, True)
+        runtime = time.perf_counter()-start     # measured right after the call so printing isn't timed
         print(f"A: {starting_a**i}")
         print(f"Bit_length_A: {(starting_a**i).bit_length()}")
         print(f"Number of DP states processed: {Globals.target_states_solved}")
-        print(f"Runtime: {time.perf_counter()-start}")
+        print(f"Runtime: {runtime}")
         print("")
+        rows.append([coins_to_str(denominations), starting_a**i, (starting_a**i).bit_length(),
+                     Globals.target_states_solved, runtime])
         Globals.target_states_solved = 0
+    write_csv("experiment2_pseudo_polynomial.csv",
+              ["denominations", "A", "bit_length_A", "dp_states_processed", "runtime_seconds"],
+              rows)
 
+def greedy_counterexample_search(max_coin=10, max_target=30, needed=3):
+    # Searches every coin system {1, a, b} with 1 < a < b <= max_coin and every target 1..max_target.
+    # A counterexample is a case where greedy finds a solution but uses more coins than the exact optimum
+    # (bottom_up_dp is the ground truth). We keep one counterexample per coin system: the smallest failing target.
+    counterexamples = []    # each entry: (denominations, target, greedy_coins, optimal_coins)
+    for a in range(2, max_coin + 1):
+        for b in range(a + 1, max_coin + 1):
+            denominations = [1, a, b]
+            for target in range(1, max_target + 1):
+                greedy_solution = greedy_largest_denomination_first(denominations, target)
+                optimal_solution = bottom_up_dp(denominations, target)
+                if greedy_solution is not None and len(greedy_solution) > len(optimal_solution):
+                    counterexamples.append((denominations, target, greedy_solution, optimal_solution))
+                    break   # smallest failing target found for this system, move on to the next system
+
+    print(f"\n{BOLD}{UNDERLINE}Greedy Counterexample Search{RESET}\n")
+    print(f"Searched coin systems {{1, a, b}} with b <= {max_coin} and targets 1..{max_target}")
+    print(f"Found {len(counterexamples)} coin systems where greedy is not optimal:")
+    for denominations, target, greedy_solution, optimal_solution in counterexamples:
+        print(f"D={denominations}, A={target}: greedy {greedy_solution} ({len(greedy_solution)} coins) "
+              f"vs optimal {optimal_solution} ({len(optimal_solution)} coins)")
+
+    # required sanity check from the assignment: D={1,3,4}, A=6 must be detected
+    assert any(d == [1, 3, 4] and t == 6 for d, t, _, _ in counterexamples), "Search failed to detect D={1,3,4}, A=6"
+    assert len(counterexamples) >= needed, f"Fewer than {needed} distinct counterexamples found"
+    write_csv("greedy_counterexamples.csv",
+              ["denominations", "A", "greedy_coins", "greedy_count", "optimal_coins", "optimal_count"],
+              [[coins_to_str(d), t, coins_to_str(g), len(g), coins_to_str(o), len(o)]
+               for d, t, g, o in counterexamples])
+    return counterexamples
 
 if __name__ == "__main__":
     random.seed(1)
@@ -326,3 +400,4 @@ if __name__ == "__main__":
     coin_algorithm_validation()
     part_2c1()
     part_2c2()
+    greedy_counterexample_search()
